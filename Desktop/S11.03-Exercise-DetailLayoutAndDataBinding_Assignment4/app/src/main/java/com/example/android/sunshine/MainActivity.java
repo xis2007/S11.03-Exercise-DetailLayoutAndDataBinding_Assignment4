@@ -25,6 +25,7 @@ import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.helper.ItemTouchHelper;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -35,6 +36,11 @@ import android.widget.ProgressBar;
 import com.example.android.sunshine.data.SunshinePreferences;
 import com.example.android.sunshine.data.WeatherContract;
 import com.example.android.sunshine.sync.SunshineSyncUtils;
+import com.example.android.sunshine.utilities.SunshineDateUtils;
+import com.example.android.sunshine.utilities.SunshineWeatherUtils;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements
         LoaderManager.LoaderCallbacks<Cursor>,
@@ -78,6 +84,8 @@ public class MainActivity extends AppCompatActivity implements
     private int mPosition = RecyclerView.NO_POSITION;
 
     private ProgressBar mLoadingIndicator;
+
+    private List<WeatherSnapshot> mWeatherSnapshotList= new ArrayList<>();
 
 
     @Override
@@ -141,6 +149,12 @@ public class MainActivity extends AppCompatActivity implements
 
         /* Setting the adapter attaches it to the RecyclerView in our layout. */
         mRecyclerView.setAdapter(mForecastAdapter);
+
+        // Sets the adapters
+        // for the DragAndSwipeHelper
+        DragAndSwipeHelper dragAndSwipeHelper = new DragAndSwipeHelper(mForecastAdapter);
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(dragAndSwipeHelper);
+        itemTouchHelper.attachToRecyclerView(mRecyclerView);
 
 
         showLoading();
@@ -235,11 +249,104 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
 
-
-        mForecastAdapter.swapCursor(data);
+        turnCursorToList(data);
+        mForecastAdapter.setWeatherSnapshotList(mWeatherSnapshotList);
+//        mForecastAdapter.swapCursor(data);
         if (mPosition == RecyclerView.NO_POSITION) mPosition = 0;
         mRecyclerView.smoothScrollToPosition(mPosition);
-        if (data.getCount() != 0) showWeatherDataView();
+        if ((mWeatherSnapshotList != null) && (mWeatherSnapshotList.size() > 0)) showWeatherDataView();
+    }
+
+    private void turnCursorToList(Cursor data) {
+        mWeatherSnapshotList.clear();
+        int position = 0;
+        while (data.moveToNext()) {
+
+            /****************
+             * Weather Icon *
+             ****************/
+            int weatherId = data.getInt(MainActivity.INDEX_WEATHER_CONDITION_ID);
+            int weatherImageId = -1;
+
+            int viewType = -1;
+//            position++;
+//
+//            switch (viewType) {
+//
+//                case ForecastAdapter.VIEW_TYPE_TODAY:
+//                    weatherImageId = SunshineWeatherUtils
+//                            .getLargeArtResourceIdForWeatherCondition(weatherId);
+//                    break;
+//
+//                case ForecastAdapter.VIEW_TYPE_FUTURE_DAY:
+//                    weatherImageId = SunshineWeatherUtils
+//                            .getSmallArtResourceIdForWeatherCondition(weatherId);
+//                    break;
+//
+//                default:
+//                    throw new IllegalArgumentException("Invalid view type, value of " + viewType);
+//            }
+
+
+            /****************
+             * Weather Date *
+             ****************/
+            /* Read date from the cursor */
+            long dateInMillis = data.getLong(MainActivity.INDEX_WEATHER_DATE);
+            /* Get human readable string using our utility method */
+            String dateString = SunshineDateUtils.getFriendlyDateString(this, dateInMillis, false);
+
+
+            /***********************
+             * Weather Description *
+             ***********************/
+            String description = SunshineWeatherUtils.getStringForWeatherCondition(this, weatherId);
+            /* Create the accessibility (a11y) String from the weather description */
+            String descriptionA11y = this.getString(R.string.a11y_forecast, description);
+
+
+            /**************************
+             * High (max) temperature *
+             **************************/
+            /* Read high temperature from the cursor (in degrees celsius) */
+            double highInCelsius = data.getDouble(MainActivity.INDEX_WEATHER_MAX_TEMP);
+            /*
+             * If the user's preference for weather is fahrenheit, formatTemperature will convert
+             * the temperature. This method will also append either °C or °F to the temperature
+             * String.
+             */
+            String highString = SunshineWeatherUtils.formatTemperature(this, highInCelsius);
+            /* Create the accessibility (a11y) String from the weather description */
+            String highA11y = this.getString(R.string.a11y_high_temp, highString);
+
+
+            /*************************
+             * Low (min) temperature *
+             *************************/
+            /* Read low temperature from the cursor (in degrees celsius) */
+            double lowInCelsius = data.getDouble(MainActivity.INDEX_WEATHER_MIN_TEMP);
+            /*
+             * If the user's preference for weather is fahrenheit, formatTemperature will convert
+             * the temperature. This method will also append either °C or °F to the temperature
+             * String.
+             */
+            String lowString = SunshineWeatherUtils.formatTemperature(this, lowInCelsius);
+            String lowA11y = this.getString(R.string.a11y_low_temp, lowString);
+
+
+            // put the information into WeatherSnapshot object
+            WeatherSnapshot weatherSnapshot = new WeatherSnapshot(weatherId, weatherImageId,
+                                                                    viewType, dateInMillis,
+                                                                    description, descriptionA11y,
+                                                                    highInCelsius, highA11y,
+                                                                    lowInCelsius, lowA11y);
+
+            mWeatherSnapshotList.add(weatherSnapshot);
+            Log.d(TAG, "turnCursorToList: added WeatherSnapshot" + position);
+        }
+
+
+
     }
 
     /**

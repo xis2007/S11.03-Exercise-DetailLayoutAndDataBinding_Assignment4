@@ -19,6 +19,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,6 +29,8 @@ import android.widget.TextView;
 import com.example.android.sunshine.utilities.SunshineDateUtils;
 import com.example.android.sunshine.utilities.SunshineWeatherUtils;
 
+import java.util.List;
+
 /**
  * {@link ForecastAdapter} exposes a list of weather forecasts
  * from a {@link android.database.Cursor} to a {@link android.support.v7.widget.RecyclerView}.
@@ -35,8 +38,8 @@ import com.example.android.sunshine.utilities.SunshineWeatherUtils;
 class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastAdapterViewHolder>
                         implements DragAndSwipeHelper.DragAndSwipeHelperAdaptor {
 
-    private static final int VIEW_TYPE_TODAY = 0;
-    private static final int VIEW_TYPE_FUTURE_DAY = 1;
+    static final int VIEW_TYPE_TODAY = 0;
+    static final int VIEW_TYPE_FUTURE_DAY = 1;
 
     /* The context we use to utility methods, app resources and layout inflaters */
     private final Context mContext;
@@ -48,6 +51,8 @@ class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastAdapt
      * an item is clicked in the list.
      */
     final private ForecastAdapterOnClickHandler mClickHandler;
+    private List<WeatherSnapshot> mWeatherSnapshotList;
+
 
     /**
      * The interface that receives onClick messages.
@@ -129,15 +134,16 @@ class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastAdapt
      */
     @Override
     public void onBindViewHolder(ForecastAdapterViewHolder forecastAdapterViewHolder, int position) {
-        mCursor.moveToPosition(position);
+        WeatherSnapshot weatherSnapshot = mWeatherSnapshotList.get(position);
 
         /****************
          * Weather Icon *
          ****************/
-        int weatherId = mCursor.getInt(MainActivity.INDEX_WEATHER_CONDITION_ID);
+        int weatherId = weatherSnapshot.getWeatherId();
         int weatherImageId;
 
         int viewType = getItemViewType(position);
+        weatherSnapshot.setViewType(viewType);
 
         switch (viewType) {
 
@@ -154,6 +160,7 @@ class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastAdapt
             default:
                 throw new IllegalArgumentException("Invalid view type, value of " + viewType);
         }
+        weatherSnapshot.setWeatherImageId(weatherImageId);
 
         forecastAdapterViewHolder.iconView.setImageResource(weatherImageId);
 
@@ -161,7 +168,7 @@ class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastAdapt
          * Weather Date *
          ****************/
          /* Read date from the cursor */
-        long dateInMillis = mCursor.getLong(MainActivity.INDEX_WEATHER_DATE);
+        long dateInMillis = weatherSnapshot.getDateInMillis();
          /* Get human readable string using our utility method */
         String dateString = SunshineDateUtils.getFriendlyDateString(mContext, dateInMillis, false);
 
@@ -171,48 +178,44 @@ class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastAdapt
         /***********************
          * Weather Description *
          ***********************/
-        String description = SunshineWeatherUtils.getStringForWeatherCondition(mContext, weatherId);
-         /* Create the accessibility (a11y) String from the weather description */
-        String descriptionA11y = mContext.getString(R.string.a11y_forecast, description);
+
 
          /* Set the text and content description (for accessibility purposes) */
-        forecastAdapterViewHolder.descriptionView.setText(description);
-        forecastAdapterViewHolder.descriptionView.setContentDescription(descriptionA11y);
+        forecastAdapterViewHolder.descriptionView.setText(weatherSnapshot.getDescription());
+        forecastAdapterViewHolder.descriptionView.setContentDescription(weatherSnapshot.getDescriptionA11y());
 
         /**************************
          * High (max) temperature *
          **************************/
          /* Read high temperature from the cursor (in degrees celsius) */
-        double highInCelsius = mCursor.getDouble(MainActivity.INDEX_WEATHER_MAX_TEMP);
+        double highInCelsius = weatherSnapshot.getHighInCelsius();
          /*
           * If the user's preference for weather is fahrenheit, formatTemperature will convert
           * the temperature. This method will also append either °C or °F to the temperature
           * String.
           */
         String highString = SunshineWeatherUtils.formatTemperature(mContext, highInCelsius);
-         /* Create the accessibility (a11y) String from the weather description */
-        String highA11y = mContext.getString(R.string.a11y_high_temp, highString);
+
 
          /* Set the text and content description (for accessibility purposes) */
         forecastAdapterViewHolder.highTempView.setText(highString);
-        forecastAdapterViewHolder.highTempView.setContentDescription(highA11y);
+        forecastAdapterViewHolder.highTempView.setContentDescription(weatherSnapshot.getHighAlly());
 
         /*************************
          * Low (min) temperature *
          *************************/
          /* Read low temperature from the cursor (in degrees celsius) */
-        double lowInCelsius = mCursor.getDouble(MainActivity.INDEX_WEATHER_MIN_TEMP);
+        double lowInCelsius = weatherSnapshot.getLowInCelsius();
          /*
           * If the user's preference for weather is fahrenheit, formatTemperature will convert
           * the temperature. This method will also append either °C or °F to the temperature
           * String.
           */
         String lowString = SunshineWeatherUtils.formatTemperature(mContext, lowInCelsius);
-        String lowA11y = mContext.getString(R.string.a11y_low_temp, lowString);
 
          /* Set the text and content description (for accessibility purposes) */
         forecastAdapterViewHolder.lowTempView.setText(lowString);
-        forecastAdapterViewHolder.lowTempView.setContentDescription(lowA11y);
+        forecastAdapterViewHolder.lowTempView.setContentDescription(weatherSnapshot.getLowAlly());
     }
 
     /**
@@ -223,8 +226,10 @@ class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastAdapt
      */
     @Override
     public int getItemCount() {
-        if (null == mCursor) return 0;
-        return mCursor.getCount();
+//        Log.d("test", "getItemCount: called");
+//        return 0;
+        if ((mWeatherSnapshotList == null) || (mWeatherSnapshotList.size() == 0)) return 0;
+        return mWeatherSnapshotList.size();
     }
 
     /**
@@ -255,8 +260,8 @@ class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastAdapt
      * @param newCursor the new cursor to use as ForecastAdapter's data source
      */
     void swapCursor(Cursor newCursor) {
-        mCursor = newCursor;
-        notifyDataSetChanged();
+//        mCursor = newCursor;
+//        notifyDataSetChanged();
     }
 
     /**
@@ -307,6 +312,13 @@ class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastAdapt
 
     @Override
     public void onItemDismiss(int position) {
+        mWeatherSnapshotList.remove(position);
+        notifyItemRemoved(position);
+    }
 
+    public void setWeatherSnapshotList(List<WeatherSnapshot> weatherSnapshotList) {
+        Log.d("test", "setWeatherSnapshotList: called");
+        this.mWeatherSnapshotList = weatherSnapshotList;
+        notifyDataSetChanged();
     }
 }
