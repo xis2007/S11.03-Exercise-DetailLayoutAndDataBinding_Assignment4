@@ -18,12 +18,15 @@ class DragAndSwipeHelper extends ItemTouchHelper.Callback {
 
     @Override
     public int getMovementFlags(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
-//        if(viewHolder instanceof ) {
-//
-//        }
-        int dragFlag = ItemTouchHelper.UP | ItemTouchHelper.DOWN;
-        int swipeFlag = ItemTouchHelper.START | ItemTouchHelper.END;
-        return makeMovementFlags(dragFlag, swipeFlag);
+        ForecastAdapter.ForecastAdapterViewHolder castedViewHolder = (ForecastAdapter.ForecastAdapterViewHolder) viewHolder;
+        if(castedViewHolder.position != 0 ) {
+            int dragFlag = ItemTouchHelper.UP | ItemTouchHelper.DOWN;
+            int swipeFlag = ItemTouchHelper.START | ItemTouchHelper.END;
+            return makeMovementFlags(dragFlag, swipeFlag);
+        } else {
+            return 0;
+        }
+
     }
 
     @Override

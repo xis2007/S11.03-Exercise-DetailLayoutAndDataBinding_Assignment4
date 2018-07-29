@@ -16,6 +16,18 @@ public class WeatherSnapshot {
     private double lowInCelsius;
     private String lowAlly;
 
+    public WeatherSnapshot(WeatherSnapshot weatherSnapshot) {
+        this.weatherId = weatherSnapshot.weatherId;
+        this.weatherImageId = weatherSnapshot.weatherImageId;
+        this.viewType = weatherSnapshot.viewType;
+        this.dateInMillis = weatherSnapshot.dateInMillis;
+        this.description = weatherSnapshot.description;
+        this.descriptionA11y = weatherSnapshot.descriptionA11y;
+        this.highInCelsius = weatherSnapshot.highInCelsius;
+        this.highAlly = weatherSnapshot.highAlly;
+        this.lowInCelsius = weatherSnapshot.lowInCelsius;
+        this.lowAlly = weatherSnapshot.lowAlly;
+    }
 
     public WeatherSnapshot(int weatherId, int weatherImageId,
                            int viewType, long dateInMillis,

@@ -51,6 +51,11 @@ class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastAdapt
      * an item is clicked in the list.
      */
     final private ForecastAdapterOnClickHandler mClickHandler;
+
+    public List<WeatherSnapshot> getWeatherSnapshotList() {
+        return mWeatherSnapshotList;
+    }
+
     private List<WeatherSnapshot> mWeatherSnapshotList;
 
 
@@ -134,6 +139,8 @@ class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastAdapt
      */
     @Override
     public void onBindViewHolder(ForecastAdapterViewHolder forecastAdapterViewHolder, int position) {
+        forecastAdapterViewHolder.position = position;
+
         WeatherSnapshot weatherSnapshot = mWeatherSnapshotList.get(position);
 
         /****************
@@ -277,6 +284,7 @@ class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastAdapt
         final TextView highTempView;
         final TextView lowTempView;
 
+        int position;
         ForecastAdapterViewHolder(View view) {
             super(view);
 
@@ -299,15 +307,26 @@ class ForecastAdapter extends RecyclerView.Adapter<ForecastAdapter.ForecastAdapt
         @Override
         public void onClick(View v) {
             int adapterPosition = getAdapterPosition();
-            mCursor.moveToPosition(adapterPosition);
-            long dateInMillis = mCursor.getLong(MainActivity.INDEX_WEATHER_DATE);
+            WeatherSnapshot weatherSnapshot = getWeatherSnapshotList().get(adapterPosition);
+
+
+            long dateInMillis = weatherSnapshot.getDateInMillis();
+//            mCursor.moveToPosition(adapterPosition);
+//            long dateInMillis = mCursor.getLong(MainActivity.INDEX_WEATHER_DATE);
             mClickHandler.onClick(dateInMillis);
         }
+
+
+
+
     }
 
     @Override
     public void onItemMove(int fromPosition, int toPosition) {
-
+        WeatherSnapshot weatherSnapshotToMove = mWeatherSnapshotList.get(fromPosition);
+        mWeatherSnapshotList.remove(fromPosition);
+        mWeatherSnapshotList.add(toPosition, weatherSnapshotToMove);
+        notifyItemMoved(fromPosition, toPosition);
     }
 
     @Override
